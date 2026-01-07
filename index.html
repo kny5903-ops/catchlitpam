@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>릿팜이를 잡아라</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
+        body { font-family: 'Jua', sans-serif; cursor: none; overflow: hidden; background-color: #fef2f2; }
+        .hole { background: radial-gradient(circle, #4b2c20 0%, #2a1810 100%); box-shadow: inset 0 8px 8px rgba(0,0,0,0.5); position: relative; aspect-ratio: 1/1; border-radius: 50%; overflow: hidden; border-bottom: 4px solid rgba(0,0,0,0.2); }
+        .hammer { position: fixed; pointer-events: none; z-index: 100; font-size: 80px; transform: translate(-50%, -50%); transition: transform 0.05s; }
+        .hammer.hit { transform: translate(-50%, -50%) rotate(-45deg); }
+        .mole { width: 90%; height: 90%; position: absolute; bottom: -100%; left: 5%; transition: bottom 0.1s; pointer-events: none; }
+        .mole.up { bottom: 5%; }
+        .hit-effect { position: fixed; pointer-events: none; font-size: 50px; font-weight: 900; color: #ef4444; z-index: 50; animation: hitText 0.5s ease-out forwards; }
+        @keyframes hitText { 0% { transform: scale(0.5); opacity: 1; } 100% { transform: scale(2.5) translateY(-60px); opacity: 0; } }
+    </style>
+</head>
+<body>
+    <div id="hammer" class="hammer">🔨</div>
+
+    <div class="min-h-screen flex flex-col items-center justify-center p-4">
+        <h1 class="text-5xl font-bold text-pink-600 mb-6">릿팜이를 잡아라</h1>
+        
+        <div class="flex gap-4 mb-6 text-xl font-bold bg-white px-6 py-3 rounded-2xl shadow-md border-2 border-pink-100">
+            <div>⏱️ <span id="time" class="text-pink-500">10</span>s</div>
+            <div class="w-px h-6 bg-gray-200"></div>
+            <div>🎯 <span id="score" class="text-blue-500">0</span></div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4 w-full max-w-md aspect-square p-4 bg-green-100 rounded-3xl shadow-inner border-4 border-green-200">
+            <div class="hole" onclick="whack(0)"><img src="litpam.png" class="mole" id="mole-0"></div>
+            <div class="hole" onclick="whack(1)"><img src="litpam.png" class="mole" id="mole-1"></div>
+            <div class="hole" onclick="whack(2)"><img src="litpam.png" class="mole" id="mole-2"></div>
+            <div class="hole" onclick="whack(3)"><img src="litpam.png" class="mole" id="mole-3"></div>
+            <div class="hole" onclick="whack(4)"><img src="litpam.png" class="mole" id="mole-4"></div>
+            <div class="hole" onclick="whack(5)"><img src="litpam.png" class="mole" id="mole-5"></div>
+            <div class="hole" onclick="whack(6)"><img src="litpam.png" class="mole" id="mole-6"></div>
+            <div class="hole" onclick="whack(7)"><img src="litpam.png" class="mole" id="mole-7"></div>
+            <div class="hole" onclick="whack(8)"><img src="litpam.png" class="mole" id="mole-8"></div>
+        </div>
+    </div>
+
+    <div id="overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+        <div id="modal" class="bg-white p-10 rounded-3xl shadow-2xl text-center border-4 border-pink-300">
+            <h2 id="modal-title" class="text-4xl font-black text-pink-500 mb-6">준비됐어?</h2>
+            <button onclick="startGame()" class="bg-pink-500 hover:bg-pink-600 text-white text-2xl px-10 py-4 rounded-full shadow-lg transition transform hover:scale-110">게임 시작!</button>
+        </div>
+    </div>
+
+    <script>
+        let score = 0;
+        let timeLeft = 10;
+        let gameActive = false;
+        const hammer = document.getElementById('hammer');
+        const moles = document.querySelectorAll('.mole');
+
+        // 망치 움직임
+        window.addEventListener('mousemove', (e) => {
+            hammer.style.left = e.clientX + 'px';
+            hammer.style.top = e.clientY + 'px';
+        });
+        window.addEventListener('mousedown', () => hammer.classList.add('hit'));
+        window.addEventListener('mouseup', () => hammer.classList.remove('hit'));
+
+        // 효과음 (AI가 만든 소리 로직)
+        function playSound() {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(800, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.2, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(); osc.stop(ctx.currentTime + 0.1);
+        }
+
+        function startGame() {
+            score = 0; timeLeft = 10; gameActive = true;
+            document.getElementById('score').innerText = score;
+            document.getElementById('time').innerText = timeLeft;
+            document.getElementById('overlay').classList.add('hidden');
+            
+            const timer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('time').innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    endGame();
+                }
+            }, 1000);
+            popOut();
+        }
+
+        function popOut() {
+            if (!gameActive) return;
+            const idx = Math.floor(Math.random() * moles.length);
+            moles[idx].classList.add('up');
+            setTimeout(() => {
+                moles[idx].classList.remove('up');
+                if (gameActive) popOut();
+            }, 700 + Math.random() * 800);
+        }
+
+        function whack(idx) {
+            if (!gameActive || !moles[idx].classList.contains('up')) return;
+            
+            score++;
+            document.getElementById('score').innerText = score;
+            moles[idx].classList.remove('up');
+            playSound();
+
+            // 퍽! 효과
+            const effect = document.createElement('div');
+            effect.className = 'hit-effect';
+            effect.innerText = '퍽!';
+            effect.style.left = event.clientX - 30 + 'px';
+            effect.style.top = event.clientY - 60 + 'px';
+            document.body.appendChild(effect);
+            setTimeout(() => effect.remove(), 500);
+        }
+
+        function endGame() {
+            gameActive = false;
+            const comment = score <= 3 ? "트친바보ㅋㅋ" : "트친좀치네ㅋ";
+            document.getElementById('modal-title').innerHTML = `종료!<br><span class="text-2xl text-gray-600">점수: ${score}</span><br><span class="text-3xl text-blue-600">${comment}</span>`;
+            document.getElementById('overlay').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
